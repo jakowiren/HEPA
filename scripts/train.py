@@ -50,6 +50,7 @@ def _build_event_loader(
             max_context=max_context,
             stride=stride,
             max_future=max_future,
+            entity_id=e.get("entity_id", ""),
         )
         if len(ds) > 0:
             datasets.append(ds)
@@ -229,6 +230,7 @@ def main() -> None:
         surf["y_surface"],
         horizons,
         surf["t_index"],
+        entity_id=surf["entity_id"],
     )
     with (out_dir / f"{tag}_metrics.json").open("w") as fh:
         json.dump(
