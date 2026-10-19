@@ -39,10 +39,11 @@ def _build_event_loader(
     max_future: int,
     stride: int,
     shuffle: bool,
+    min_context: int,
 ):
     datasets = []
     for e in entities:
-        if len(e["test"]) <= 128 + 1:
+        if len(e["test"]) <= min_context + 1:
             continue
         ds = EventDataset(
             e["test"],
@@ -50,6 +51,7 @@ def _build_event_loader(
             max_context=max_context,
             stride=stride,
             max_future=max_future,
+            min_context=min_context,
             entity_id=e.get("entity_id", ""),
         )
         if len(ds) > 0:
@@ -72,6 +74,13 @@ def main() -> None:
     parser.add_argument("--pre-epochs", type=int, default=PROTOCOL["pre_epochs"])
     parser.add_argument("--ft-epochs", type=int, default=PROTOCOL["ft_epochs"])
     parser.add_argument("--out", type=str, default="outputs/")
+    parser.add_argument(
+        "--min-context",
+        type=int,
+        default=PROTOCOL["min_context"],
+        help="first observation time of the event surface: steps observed before "
+        "the first scored window",
+    )
     args = parser.parse_args()
 
     out_dir = Path(args.out)
@@ -90,7 +99,11 @@ def main() -> None:
     horizons = bundle["horizons"]
     n_channels = bundle["n_channels"]
     max_context = get_context(args.dataset)
-    print(f"  n_channels={n_channels}  K={len(horizons)}  context={max_context}  norm={norm_mode}")
+    min_context = int(args.min_context)
+    print(
+        f"  n_channels={n_channels}  K={len(horizons)}  context={max_context}  "
+        f"min_context={min_context}  norm={norm_mode}"
+    )
 
     # ---- pretrain dataloaders ---------------------------------------------
     delta_t_max = max(horizons)
@@ -136,6 +149,7 @@ def main() -> None:
         delta_t_max,
         stride=4,
         shuffle=True,
+        min_context=min_context,
     )
     ft_val = _build_event_loader(
         bundle["ft_val"],
@@ -144,6 +158,7 @@ def main() -> None:
         delta_t_max,
         stride=4,
         shuffle=False,
+        min_context=min_context,
     )
     ft_test = _build_event_loader(
         bundle["ft_test"],
@@ -152,6 +167,7 @@ def main() -> None:
         delta_t_max,
         stride=1,
         shuffle=False,
+        min_context=min_context,
     )
 
     # ---- model -------------------------------------------------------------
@@ -240,6 +256,7 @@ def main() -> None:
                 "n_params": n_params,
                 "pooled": pooled,
                 "h_auroc": h_aur,
+                "min_context": min_context,
                 "per_horizon": per_h,
                 "monotonicity_violation_rate": mono,
             },
