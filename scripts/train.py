@@ -20,6 +20,7 @@ from torch.utils.data import ConcatDataset, DataLoader
 from hepa.data import load_dataset
 from hepa.data._common import global_zscore_bundle
 from hepa.evaluation import (
+    elapsed_time_h_auroc,
     evaluate_probability_surface,
     h_auroc,
     monotonicity_violation_rate,
@@ -227,11 +228,13 @@ def main() -> None:
     per_h = per_horizon_auroc(surf["p_surface"], surf["y_surface"], horizons)
     h_aur = h_auroc(surf["p_surface"], surf["y_surface"], horizons)
     mono = monotonicity_violation_rate(surf["p_surface"])
+    age_h = elapsed_time_h_auroc(surf["t_index"], surf["y_surface"], horizons)
 
     print(
         f"  pooled AUPRC={pooled['auprc']:.4f}  AUROC={pooled['auroc']:.4f}  "
         f"h-AUROC={h_aur:.4f}  monotonicity_violations={mono:.4f}"
     )
+    print(f"  elapsed-time reference h-AUROC={age_h:.4f}  (min_context={min_context})")
     for k, h in enumerate(horizons):
         print(
             f"    h={h:>4d}  AUROC={per_h['auroc_per_k'][k]:.3f}  "
@@ -256,6 +259,7 @@ def main() -> None:
                 "n_params": n_params,
                 "pooled": pooled,
                 "h_auroc": h_aur,
+                "elapsed_time_h_auroc": age_h,
                 "min_context": min_context,
                 "per_horizon": per_h,
                 "monotonicity_violation_rate": mono,
