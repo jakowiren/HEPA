@@ -58,3 +58,14 @@ def test_random_surface_auroc_near_chance():
     p = rng.random(size=(n, k))
     out = evaluate_probability_surface(p, y)
     assert 0.4 < out["auroc"] < 0.6
+
+
+def test_ece_and_brier_on_a_perfectly_calibrated_surface():
+    from hepa.evaluation import brier_score, expected_calibration_error
+
+    p = np.full((400, 3), 0.25)
+    y = np.zeros((400, 3), dtype=np.int32)
+    y[:100] = 1  # one quarter positive in every bin the surface occupies
+    assert expected_calibration_error(p, y) == 0.0
+    assert brier_score(p, y) == 0.25 * 0.75
+
