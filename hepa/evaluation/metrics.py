@@ -129,14 +129,21 @@ def h_auroc(
     p_surface: np.ndarray,
     y_surface: np.ndarray,
     horizon_labels: Optional[List[int]] = None,
+    degenerate_prevalence: float = 1e-3,
 ) -> float:
-    """Mean per-horizon AUROC across horizons with 0 < prevalence < 1.
+    """Mean per-horizon AUROC, skipping degenerate horizons.
 
     The paper's primary metric. Robust to drifting horizon base rates that
-    can make pooled AUPRC misleading.
+    can make pooled AUPRC misleading. A horizon is degenerate when its
+    prevalence is below ``degenerate_prevalence`` or above one minus it
+    (PROTOCOL.md: 0.001 / 0.999).
     """
     rows = per_horizon_auroc(p_surface, y_surface, horizon_labels)
-    vals = [v for v in rows["auroc_per_k"] if not np.isnan(v)]
+    vals = [
+        v
+        for v, prev in zip(rows["auroc_per_k"], rows["prevalence_per_k"])
+        if not np.isnan(v) and degenerate_prevalence <= prev <= 1.0 - degenerate_prevalence
+    ]
     return float(np.mean(vals)) if vals else float("nan")
 
 

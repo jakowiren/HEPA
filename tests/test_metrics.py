@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from hepa.evaluation import (
+    brier_score,
     evaluate_probability_surface,
+    expected_calibration_error,
     h_auroc,
     monotonicity_violation_rate,
     per_horizon_auroc,
@@ -61,11 +64,20 @@ def test_random_surface_auroc_near_chance():
 
 
 def test_ece_and_brier_on_a_perfectly_calibrated_surface():
-    from hepa.evaluation import brier_score, expected_calibration_error
-
     p = np.full((400, 3), 0.25)
     y = np.zeros((400, 3), dtype=np.int32)
     y[:100] = 1  # one quarter positive in every bin the surface occupies
     assert expected_calibration_error(p, y) == 0.0
     assert brier_score(p, y) == 0.25 * 0.75
+
+
+def test_h_auroc_skips_horizons_below_the_protocol_prevalence():
+    n = 2000
+    y = np.zeros((n, 2), dtype=np.int32)
+    y[:1, 0] = 1  # prevalence 0.0005: degenerate per PROTOCOL.md
+    y[:4, 1] = 1  # prevalence 0.002: kept
+    p = 1.0 - y  # ranks every horizon perfectly wrong
+    p[:, 1] = y[:, 1]  # ...except the kept one
+    assert h_auroc(p, y) == 1.0
+    assert h_auroc(p, y, degenerate_prevalence=0.0) == 0.5
 
