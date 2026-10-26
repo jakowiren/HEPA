@@ -33,3 +33,15 @@ def test_e2e_finetuning_updates_the_encoder_and_pred_ft_does_not():
         before = _encoder_weights(model)
         finetune(model, loader, loader, HORIZONS, mode=mode, n_epochs=1, device="cpu")
         assert torch.equal(_encoder_weights(model), before) is not changes, mode
+
+
+def test_reset_predictor_gives_new_weights_of_the_same_shape():
+    model, loader = _tiny_setup()
+    before = [p.detach().clone() for p in model.predictor.parameters()]
+    model.reset_predictor()
+    after = list(model.predictor.parameters())
+    assert [p.shape for p in after] == [p.shape for p in before]
+    assert not all(torch.equal(a, b) for a, b in zip(after, before))
+    ctx, ctx_m, _, _ = next(iter(loader))
+    cdf = model.finetune_forward(ctx, torch.tensor(HORIZONS, dtype=torch.float32), ctx_m)
+    assert cdf.shape == (ctx.shape[0], len(HORIZONS))

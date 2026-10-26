@@ -72,6 +72,9 @@ def main() -> None:
     parser.add_argument("--ft-epochs", type=int, default=PROTOCOL["ft_epochs"])
     parser.add_argument("--out", type=str, default="outputs/")
     parser.add_argument("--ft-mode", choices=("pred_ft", "e2e"), default="pred_ft")
+    parser.add_argument(
+        "--predictor-init", choices=("pretrained", "random"), default="pretrained"
+    )
     args = parser.parse_args()
 
     out_dir = Path(args.out)
@@ -81,7 +84,7 @@ def main() -> None:
 
     print(
         f"HEPA train: dataset={args.dataset} seed={args.seed} device={device} "
-        f"ft_mode={args.ft_mode}"
+        f"ft_mode={args.ft_mode} predictor_init={args.predictor_init}"
     )
     bundle = load_dataset(args.dataset)
     # Per-dataset normalization (see hepa.utils.config.NORM_POLICY): C-MAPSS uses
@@ -189,6 +192,8 @@ def main() -> None:
     )
 
     # ---- finetune ----------------------------------------------------------
+    if args.predictor_init == "random":
+        model.reset_predictor()
     print("[finetune]")
     finetune(
         model,
@@ -240,6 +245,7 @@ def main() -> None:
                 "dataset": args.dataset,
                 "seed": args.seed,
                 "ft_mode": args.ft_mode,
+                "predictor_init": args.predictor_init,
                 "n_params": n_params,
                 "pooled": pooled,
                 "h_auroc": h_aur,
